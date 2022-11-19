@@ -1,6 +1,6 @@
 #!/usr/bin/perl
-print "\033[2J";    #clear the screen
-print "\033[0;0H";  #jump to 0,0
+#print "\033[2J";    #clear the screen
+#print "\033[0;0H";  #jump to 0,0
 
 use strict;
 use warnings;
@@ -24,18 +24,21 @@ foreach my $i (@vmids) {
     chomp $status;
     next if $status ne "status: running"; 
     if ($mode eq "print") {
-	$fstrim_exec = `qm guest exec $i fstrim -- "-av"`;
+	#$fstrim_exec = `qm guest exec $i fstrim -- "-av"`;
+	$fstrim_exec = `qm agent $i fstrim`;
 	print "Resultados Fstrim para $i VM \n $fstrim_exec \n";
     } else {
-	$fstrim_exec = `qm guest exec $i fstrim -- "-av"`;	
-	$fstrim_exec_filtered = `qm guest exec $i fstrim -- "-av" | awk -F":" '/exited/{print \$2}'`;
+	#$fstrim_exec = `qm guest exec $i fstrim -- "-av"`;
+	$fstrim_exec = `qm agent $i fstrim`;
+	#$fstrim_exec_filtered = `qm guest exec $i fstrim -- "-av" | awk -F":" '/exited/{print \$2}'`;	
+	$fstrim_exec_filtered = `qm agent $i fstrim | awk -F":" '/exited/{print \$2}'`;
 	if ($fstrim_exec_filtered eq "") {
-	#Este código de erro significa que o agente convidado QEMU não está em execução
-	#Teste isso executando na VM systemctl stop qemu-guest-agent.service
-	    $message .= "O agente convidado QEMU não está em execução para VM $i no nó $node\n";
+	    #Este código de erro significa que o agente convidado QEMU não está em execução
+		#Teste isso executando na VM systemctl stop qemu-guest-agent.service
+	    $message .= "O agente convidado QEMU não está em execução para VM $i no node $node\n";
 	    $message .= "Mensagem de erro bruta: \n $fstrim_exec \n";
 	} elsif (index($fstrim_exec_filtered, "0") != -1) {
-	    $message .= "Mesmo o agente convidado QEMU está em execução, há um erro de execução do comando fstrim para VM $i no nó $node\n";
+	    $message .= "Mesmo o agente convidado QEMU está em execução, há um erro de execução do comando fstrim para VM $i no node $node\n";
 	    $message .= "Mensagem de erro bruta: \n $fstrim_exec \n";
         }
     }
@@ -46,7 +49,7 @@ if ($mode eq "mail" && $message ne "") {
     my $fullhostname = `hostname -f`;
     $fullhostname =~ s/^\s+|\s+$//g ;
     my $from = "root@".$fullhostname;
-    my $subject = "Relatório de descarte Fstrim no nó Proxmox $node";
+    my $subject = "Relatório de descarte Fstrim no node Proxmox $node";
 
     open(MAIL, "|/usr/sbin/sendmail -t");
 
