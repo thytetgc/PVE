@@ -1,0 +1,71 @@
+sudo apt-get update ; apt-get install mutt fail2ban -y
+
+
+touch /var/log/secure
+ln -s /var/log/secure /var/log/auth.log
+
+mv /etc/fail2ban/jail.d/defaults-debian.conf /etc/fail2ban/jail.d/defaults-debian.conf.bkp
+mv /etc/fail2ban/jail.conf /etc/fail2ban/jail.conf.bkp
+
+echo '# ===============================================================================================================
+# Fail2Ban Arquivo de Configuração
+
+#[INCLUDES]
+#before = paths-debian.conf
+
+[DEFAULT]
+ignoreip        = localhost
+# Bloqueia por 12 horas
+bantime         = 21600
+# Permanece registrado por 1 hora
+findtime        = 3600
+# No maximo 30 tentativas
+maxretry        = 30
+usedns          = warn
+backend         = auto
+#logencoding    = auto
+#enabled        = false
+#filter         = %(__name__)s
+mta             = sendmail
+#protocol       = tcp
+chain           = INPUT
+port            = 0:65535
+
+destemail       = curioso@pega.me
+sendername      = Fail2Ban
+# Default action to take: ban only
+action          = iptables[name=%(__name__)s, port=%(port)s]
+
+# ===============================================================================================================
+
+[sshd]
+enabled         = true
+filter          = sshd
+action          = iptables-multiport[name=SSH, port="22,1804", protocol=tcp]
+                sendmail[name=SSH, dest=curioso@pega.me]
+logpath         = /var/log/auth.log
+maxretry        = 1
+
+[pve-web-auth]
+enabled			= true
+filter			= pve-web-auth
+action          = iptables-multiport[name=PVE-WEB, port="8006", protocol=tcp]
+                sendmail[name=PVE-WEB, dest=curioso@pega.me]
+logpath			= /var/log/daemon.log
+maxretry		= 3
+
+# ===============================================================================================================' echo > /etc/fail2ban/jail.conf
+
+
+echo '# ===============================================================================================================
+# Fail2Ban Arquivo de Configuração - PVE-WEB
+
+[Definition]
+failregex = pvedaemon\[.*authentication failure; rhost=<HOST> user=.* msg=.*
+
+ignoreregex =
+# ===============================================================================================================' echo > /etc/fail2ban/filter.d/pve-web-auth.conf
+
+service fail2ban restart ; fail2ban-client status ; tail -f /var/log/fail2ban.log
+systemctl restart fail2ban; systemctl status fail2ban
+fail2ban-client -v status 
